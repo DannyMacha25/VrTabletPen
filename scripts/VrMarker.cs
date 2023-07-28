@@ -13,7 +13,7 @@ using TMPro;
 using System;
 using UnityEngine.EventSystems;
 using UnityEngine.XR.Interaction.Toolkit;
-using UnityEngine.XR;
+
 public class VrMarker : MonoBehaviour
 {
     enum Tool
@@ -26,13 +26,22 @@ public class VrMarker : MonoBehaviour
     // Public editables
     [SerializeField] private int _penSize = 5;
     [SerializeField] private Color _color;
+    [SerializeField] private RGBInput _colorInput;
     [SerializeField] bool _acceptMouseInput = false;
+    [SerializeField] TextMeshProUGUI _sizeText;
     [SerializeField] int _frameDelay = 2;
     // Be sure the panels are in order of PEN, ERASER, COLOR PICKER
     [SerializeField] GameObject[] _toolPanels;
 
+
+    // Colors for UI
+    private Color _toolSelectedColor = new Color(248 / 255f, 1f, 117 / 255f, 1f);
+    private Color _toolUnSelectedColor = new Color(1f, 1f, 1f, 1f);
+
     // Private Fields
     private Color[] _colors;
+    private bool _disableFirstFrame = true;
+    private bool _passedFirstFrame = false;
     private RaycastHit _touch;
     private Whiteboard _whiteboard;
     private Vector2 _touchPos, _lastTouchPos;
@@ -46,29 +55,21 @@ public class VrMarker : MonoBehaviour
     // Undo specific fields
     private CappedStack<WhiteboardState> _wbStateStack = new CappedStack<WhiteboardState>(10);
 
+    public XRRayInteractor rightRay;
     // Testing shtuff
     private int _framesPassedSinceApply = 0;
-
-    // Vr
-    [Header("Vr")]
-    public XRController rightHand; // Need to connect rays to drawing
-    public XRController leftHand;
-
-    public XRRayInteractor rightRay;
-    public XRRayInteractor leftRay;
     void Start()
     {
         //_renderer = _tip.GetComponent<Renderer>();
 
         _colors = Enumerable.Repeat(_color, _penSize * _penSize).ToArray();
-        //_sizeText.text = _penSize.ToString();
+        _sizeText.text = _penSize.ToString();
     }
 
 
     void Update()
     {
-        Vector3 pos = new Vector3(0, 0, 0);
-        ///ChangeColor(_colorInput.Color());
+        ChangeColor(_colorInput.Color());
 
         // Pen size
         if (Keyboard.current.leftBracketKey.wasPressedThisFrame)
@@ -121,7 +122,7 @@ public class VrMarker : MonoBehaviour
     }
     private void ChangePenSize(int change)
     {
-        switch (_currentTool)
+        switch(_currentTool)
         {
             case Tool.Pen:
                 _penSize += change;
@@ -129,6 +130,7 @@ public class VrMarker : MonoBehaviour
 
                 if (_penSize < 1) { _penSize = 1; }
 
+                _sizeText.text = _penSize.ToString();
                 break;
             case Tool.Eraser:
                 _eraserSize += change;
@@ -136,49 +138,40 @@ public class VrMarker : MonoBehaviour
 
                 if (_eraserSize < 1) { _eraserSize = 1; }
 
-
+                _sizeText.text = _eraserSize.ToString();
                 break;
         }
     }
     private void ChangeTool(Tool t)
     {
         _currentTool = t;
-        
+        switch(t)
+        {
+            case Tool.Pen:
+                _toolPanels[0].GetComponent<UnityEngine.UI.Image>().color = _toolSelectedColor;
+                _toolPanels[1].GetComponent<UnityEngine.UI.Image>().color = _toolUnSelectedColor;
+                _toolPanels[2].GetComponent<UnityEngine.UI.Image>().color = _toolUnSelectedColor;
+                _sizeText.text = _penSize.ToString();
+                break;
+            case Tool.Eraser:
+                _toolPanels[0].GetComponent<UnityEngine.UI.Image>().color = _toolUnSelectedColor;
+                _toolPanels[1].GetComponent<UnityEngine.UI.Image>().color = _toolSelectedColor;
+                _toolPanels[2].GetComponent<UnityEngine.UI.Image>().color = _toolUnSelectedColor;
+                _sizeText.text = _eraserSize.ToString();
+                break;
+            case Tool.ColorPicker:
+                _toolPanels[0].GetComponent<UnityEngine.UI.Image>().color = _toolUnSelectedColor;
+                _toolPanels[1].GetComponent<UnityEngine.UI.Image>().color = _toolUnSelectedColor;
+                _toolPanels[2].GetComponent<UnityEngine.UI.Image>().color = _toolSelectedColor;
+                _sizeText.text = " ";
+                break;
+        }
     }
     // Pen
-    private void Draw()
+    private void Draw() // Need to replicate erase like draw
     {
-        Vector3 pointerPosition;
-        if (_acceptMouseInput)
+        if (rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled)
         {
-            pointerPosition = Mouse.current.position.ReadValue();
-        }
-        else
-        {
-            pointerPosition = Pen.current.position.ReadValue();
-        }
-        Vector3 worldPos = new Vector3(0, 0, 0);
-        if (Pen.current.tip.isPressed || (_acceptMouseInput && Pointer.current.press.isPressed))
-        {
-            RaycastHit hitData;
-            pointerPosition.z = 1;
-            var ray = Camera.main.ScreenPointToRay(pointerPosition);
-            if (Physics.Raycast(ray, out hitData, 1000))
-            {
-                worldPos = hitData.point;
-            }
-
-        }
-        if (worldPos != Vector3.zero)
-        {
-            worldPos.z -= .1f;
-            Debug.DrawRay(worldPos, Vector3.forward, Color.green, 100f);
-        }
-
-        if (Physics.Raycast(Camera.main.ScreenPointToRay(pointerPosition), out _touch) && worldPos != Vector3.zero)
-        {
-            //Debug.Log("Touched");
-
             if (_touch.transform.CompareTag("Whiteboard"))
             {
                 if (_whiteboard == null)
@@ -198,9 +191,10 @@ public class VrMarker : MonoBehaviour
                     y = (int)((_touchPos.y * _whiteboard.textureSize.y - (_penSize / 2)) % _whiteboard.textureSize.y);
                     //return;
                 }
-                //Debug.Log("AHHHHHHHH! But Not :3 : " + x + ", " + y);
+                Debug.Log("AHHHHHHHH! But Not :3 : " + x + ", " + y);
                 if (_touchedLastFrame)
                 {
+                    Debug.Log("DAHHHHHHHH! But Not :3 : " + x + ", " + y);
                     _whiteboard.drawTexture.SetPixels(x, y, _penSize, _penSize, _colors);
                     for (float f = 0.01f; f < 1.00f; f += .01f)
                     {
@@ -216,26 +210,32 @@ public class VrMarker : MonoBehaviour
                         }
                     }
 
-                    if (_framesPassedSinceApply >= _frameDelay)
+                    if(_framesPassedSinceApply >= _frameDelay)
                     {
                         _whiteboard.drawTexture.Apply();
                         _framesPassedSinceApply = 0;
-                    }
-                    else
+                    }else
                     {
                         _framesPassedSinceApply++;
-                    }
+                    } 
                 }
 
-                if (!_touchedLastFrame)
+                if(!_touchedLastFrame)
                 {
                     var wbState = new WhiteboardState(_whiteboard, _whiteboard.drawTexture);
                     _wbStateStack.Push(wbState);
                 }
 
-                _lastTouchPos = new Vector2(x, y);
-                _lastTouchRot = transform.rotation;
-                _touchedLastFrame = true;
+                if (_disableFirstFrame && _passedFirstFrame)
+                {
+                    _lastTouchPos = new Vector2(x, y);
+                    _lastTouchRot = transform.rotation;
+                    _touchedLastFrame = true;
+                } else if (_disableFirstFrame && !_passedFirstFrame)
+                {
+                    _passedFirstFrame = true;
+                }
+                
                 return;
             }
         }
@@ -247,17 +247,18 @@ public class VrMarker : MonoBehaviour
         }
         _whiteboard = null;
         _touchedLastFrame = false;
+        _passedFirstFrame = false;
+        _touch = new RaycastHit();
     }
 
     // Eraser
     private void Erase()
     {
         Vector3 pointerPosition;
-        if (_acceptMouseInput)
+        if(_acceptMouseInput)
         {
             pointerPosition = Mouse.current.position.ReadValue();
-        }
-        else
+        }else
         {
             pointerPosition = Pen.current.position.ReadValue();
         }
@@ -402,6 +403,7 @@ public class VrMarker : MonoBehaviour
                 var color = wb.drawTexture.GetPixel(x, y);
                 //Debug.Log(color.ToString());
                 ChangeColor(color);
+                _colorInput.UpdateColor(color);
             }
         }
     }
@@ -440,7 +442,7 @@ public class VrMarker : MonoBehaviour
 
     private void FillArray<T>(T[] arr, T element)
     {
-        for (int i = 0; i < arr.Length; i++)
+        for(int i = 0; i < arr.Length; i++)
         {
             arr[i] = element;
         }
@@ -479,5 +481,5 @@ public class VrMarker : MonoBehaviour
 
     }
 
-
+    
 }

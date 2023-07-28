@@ -25,9 +25,8 @@ public class VrControllerTest : MonoBehaviour
         if (rightRay.enabled)
         {
             RaycastHit hit;
-            Debug.Log(rightRay.TryGetCurrent3DRaycastHit(out hit));
-            Debug.Log(hit.point);
+            //Debug.Log(rightRay.TryGetCurrent3DRaycastHit(out hit));
+            //Debug.Log(hit.point);
         }
-        Debug.Log(pressed);
     }
 }
