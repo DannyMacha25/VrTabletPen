@@ -71,32 +71,6 @@ public class VrMarker : MonoBehaviour
     {
         ChangeColor(_colorInput.Color());
 
-        // Pen size
-        if (Keyboard.current.leftBracketKey.wasPressedThisFrame)
-        {
-            ChangePenSize(-1);
-        }
-
-        if (Keyboard.current.rightBracketKey.wasPressedThisFrame)
-        {
-            ChangePenSize(1);
-        }
-
-        // Change Tool NOTE: Add mouse interaction with UI in future
-        if (Keyboard.current.digit1Key.wasPressedThisFrame)
-        {
-            ChangeTool(Tool.Pen);
-        }
-
-        if (Keyboard.current.digit2Key.wasPressedThisFrame)
-        {
-            ChangeTool(Tool.Eraser);
-        }
-
-        if (Keyboard.current.digit3Key.wasPressedThisFrame)
-        {
-            ChangeTool(Tool.ColorPicker);
-        }
         if (Keyboard.current.uKey.wasPressedThisFrame)
         {
             Undo();
@@ -254,33 +228,8 @@ public class VrMarker : MonoBehaviour
     // Eraser
     private void Erase()
     {
-        Vector3 pointerPosition;
-        if(_acceptMouseInput)
-        {
-            pointerPosition = Mouse.current.position.ReadValue();
-        }else
-        {
-            pointerPosition = Pen.current.position.ReadValue();
-        }
-        Vector3 worldPos = new Vector3(0, 0, 0);
-        if (Pen.current.tip.isPressed || (_acceptMouseInput && Pointer.current.press.isPressed))
-        {
-            RaycastHit hitData;
-            pointerPosition.z = 1;
-            var ray = Camera.main.ScreenPointToRay(pointerPosition);
-            if (Physics.Raycast(ray, out hitData, 1000))
-            {
-                worldPos = hitData.point;
-            }
-
-        }
-        if (worldPos != Vector3.zero)
-        {
-            worldPos.z -= .1f;
-            Debug.DrawRay(worldPos, Vector3.forward, Color.green, 100f);
-        }
-
-        if (Physics.Raycast(Camera.main.ScreenPointToRay(pointerPosition), out _touch) && worldPos != Vector3.zero)
+ 
+        if (rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled)
         {
 
             if (_touch.transform.CompareTag("Whiteboard"))
@@ -336,9 +285,17 @@ public class VrMarker : MonoBehaviour
                     _wbStateStack.Push(wbState);
                 }
 
-                _lastTouchPos = new Vector2(x, y);
-                _lastTouchRot = transform.rotation;
-                _touchedLastFrame = true;
+                if (_disableFirstFrame && _passedFirstFrame)
+                {
+                    _lastTouchPos = new Vector2(x, y);
+                    _lastTouchRot = transform.rotation;
+                    _touchedLastFrame = true;
+                }
+                else if (_disableFirstFrame && !_passedFirstFrame)
+                {
+                    _passedFirstFrame = true;
+                }
+
                 return;
             }
         }
@@ -350,39 +307,14 @@ public class VrMarker : MonoBehaviour
         }
         _whiteboard = null;
         _touchedLastFrame = false;
+        _passedFirstFrame = false;
+        _touch = new RaycastHit();
     }
 
     // Color Picker NOTE: Needs some positional work
     private void PickColor()
     {
-        Vector3 pointerPosition;
-        if (_acceptMouseInput)
-        {
-            pointerPosition = Mouse.current.position.ReadValue();
-        }
-        else
-        {
-            pointerPosition = Pen.current.position.ReadValue();
-        }
-        Vector3 worldPos = new Vector3(0, 0, 0);
-        if (Pen.current.tip.isPressed || (_acceptMouseInput && Pointer.current.press.isPressed))
-        {
-            RaycastHit hitData;
-            pointerPosition.z = 1;
-            var ray = Camera.main.ScreenPointToRay(pointerPosition);
-            if (Physics.Raycast(ray, out hitData, 1000))
-            {
-                worldPos = hitData.point;
-            }
-
-        }
-        if (worldPos != Vector3.zero)
-        {
-            worldPos.z -= .1f;
-            Debug.DrawRay(worldPos, Vector3.forward, Color.green, 100f);
-        }
-
-        if (Physics.Raycast(Camera.main.ScreenPointToRay(pointerPosition), out _touch) && worldPos != Vector3.zero)
+        if (rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled)
         {
             if (_touch.transform.CompareTag("Whiteboard"))
             {
@@ -405,6 +337,52 @@ public class VrMarker : MonoBehaviour
                 ChangeColor(color);
                 _colorInput.UpdateColor(color);
             }
+        }
+    }
+
+    public void LowerPenSize()
+    {
+        switch (_currentTool)
+        {
+            case Tool.Pen:
+                _penSize -= 1;
+                _colors = Enumerable.Repeat(_color, _penSize * _penSize).ToArray();
+
+                if (_penSize < 1) { _penSize = 1; }
+
+                _sizeText.text = _penSize.ToString();
+                break;
+            case Tool.Eraser:
+                _eraserSize -= 1;
+                _colors = Enumerable.Repeat(_color, _eraserSize * _eraserSize).ToArray();
+
+                if (_eraserSize < 1) { _eraserSize = 1; }
+
+                _sizeText.text = _eraserSize.ToString();
+                break;
+        }
+    }
+
+    public void IncreasePenSize()
+    {
+        switch (_currentTool)
+        {
+            case Tool.Pen:
+                _penSize += 1;
+                _colors = Enumerable.Repeat(_color, _penSize * _penSize).ToArray();
+
+                if (_penSize < 1) { _penSize = 1; }
+
+                _sizeText.text = _penSize.ToString();
+                break;
+            case Tool.Eraser:
+                _eraserSize += 1;
+                _colors = Enumerable.Repeat(_color, _eraserSize * _eraserSize).ToArray();
+
+                if (_eraserSize < 1) { _eraserSize = 1; }
+
+                _sizeText.text = _eraserSize.ToString();
+                break;
         }
     }
 
