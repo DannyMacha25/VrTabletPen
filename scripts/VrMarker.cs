@@ -56,6 +56,11 @@ public class VrMarker : MonoBehaviour
     private CappedStack<WhiteboardState> _wbStateStack = new CappedStack<WhiteboardState>(10);
 
     public XRRayInteractor rightRay;
+    public XRRayInteractor leftRay;
+    public XRController rightHand;
+
+    public InputHelpers.Button undoButton;
+    bool undoAlreadyPressed = false;
     // Testing shtuff
     private int _framesPassedSinceApply = 0;
     void Start()
@@ -70,8 +75,9 @@ public class VrMarker : MonoBehaviour
     void Update()
     {
         ChangeColor(_colorInput.Color());
+       
 
-        if (Keyboard.current.uKey.wasPressedThisFrame)
+        if (UndoPressedThisFrame())
         {
             Undo();
         }
@@ -144,7 +150,7 @@ public class VrMarker : MonoBehaviour
     // Pen
     private void Draw() // Need to replicate erase like draw
     {
-        if (rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled)
+        if ((rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled) || (leftRay.TryGetCurrent3DRaycastHit(out _touch) && leftRay.isActiveAndEnabled))
         {
             if (_touch.transform.CompareTag("Whiteboard"))
             {
@@ -229,7 +235,7 @@ public class VrMarker : MonoBehaviour
     private void Erase()
     {
  
-        if (rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled)
+        if ((rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled) || (leftRay.TryGetCurrent3DRaycastHit(out _touch) && leftRay.isActiveAndEnabled))
         {
 
             if (_touch.transform.CompareTag("Whiteboard"))
@@ -314,7 +320,7 @@ public class VrMarker : MonoBehaviour
     // Color Picker NOTE: Needs some positional work
     private void PickColor()
     {
-        if (rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled)
+        if ((rightRay.TryGetCurrent3DRaycastHit(out _touch) && rightRay.isActiveAndEnabled) || (leftRay.TryGetCurrent3DRaycastHit(out _touch) && leftRay.isActiveAndEnabled))
         {
             if (_touch.transform.CompareTag("Whiteboard"))
             {
@@ -400,11 +406,31 @@ public class VrMarker : MonoBehaviour
         prevState = null;
     }
 
+    bool UndoPressedThisFrame()
+    {
+        bool pressed = false;
+        rightHand.inputDevice.IsPressed(undoButton, out pressed);
+        if(!pressed)
+        {
+            undoAlreadyPressed = false;
+            return false;
+        }
+        if(undoAlreadyPressed)
+        {
+            return false;
+        } else
+        {
+            undoAlreadyPressed = true;
+            return true;
+        }
+    }
+
     /**
      * Functions for the RGB sliders
      */
     public void ChangeToPen()
     {
+        Debug.Log("called");
         ChangeTool(Tool.Pen);
     }
 
@@ -459,5 +485,4 @@ public class VrMarker : MonoBehaviour
 
     }
 
-    
 }
