@@ -22,4 +22,5 @@ An object in unity needs a few components before it can be drawn on.
 * Right Grip button to draw
 * Left Grip button to open up the pallete
 * 'A' (On Oculus Controllers) to interact with the pallete
+* 'B' Undo
 * Right/Left trigger for ascension/descension
