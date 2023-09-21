@@ -24,15 +24,22 @@ public class VrMarker : MonoBehaviour
     }
 
     // Public editables
+    [Header("Pen Settings")]
     [SerializeField] private int _penSize = 5;
     [SerializeField] private Color _color;
     [SerializeField] private RGBInput _colorInput;
     [SerializeField] bool _acceptMouseInput = false;
+    [Header("Other Options")]
+    [SerializeField] int _frameDelay = 2; // Helps with fps while drawing, will update texture every x amount of frames
+    [Header("Menu Stuff")]
     [SerializeField] TextMeshProUGUI _sizeText;
-    [SerializeField] int _frameDelay = 2;
     // Be sure the panels are in order of PEN, ERASER, COLOR PICKER
     [SerializeField] GameObject[] _toolPanels;
-
+    [Header("VR Requirements")]
+    public XRRayInteractor rightRay;
+    public XRRayInteractor leftRay;
+    public XRController rightHand;
+    public InputHelpers.Button undoButton;
 
     // Colors for UI
     private Color _toolSelectedColor = new Color(248 / 255f, 1f, 117 / 255f, 1f);
@@ -55,11 +62,7 @@ public class VrMarker : MonoBehaviour
     // Undo specific fields
     private CappedStack<WhiteboardState> _wbStateStack = new CappedStack<WhiteboardState>(10);
 
-    public XRRayInteractor rightRay;
-    public XRRayInteractor leftRay;
-    public XRController rightHand;
-
-    public InputHelpers.Button undoButton;
+    
     bool undoAlreadyPressed = false;
     // Testing shtuff
     private int _framesPassedSinceApply = 0;
@@ -171,10 +174,8 @@ public class VrMarker : MonoBehaviour
                     y = (int)((_touchPos.y * _whiteboard.textureSize.y - (_penSize / 2)) % _whiteboard.textureSize.y);
                     //return;
                 }
-                Debug.Log("AHHHHHHHH! But Not :3 : " + x + ", " + y);
                 if (_touchedLastFrame)
                 {
-                    Debug.Log("DAHHHHHHHH! But Not :3 : " + x + ", " + y);
                     _whiteboard.drawTexture.SetPixels(x, y, _penSize, _penSize, _colors);
                     for (float f = 0.01f; f < 1.00f; f += .01f)
                     {
@@ -397,7 +398,7 @@ public class VrMarker : MonoBehaviour
         var prevState = _wbStateStack.Pop();
         if (prevState == null)
         {
-            Debug.Log("Twas Null");
+            //Debug.Log("Twas Null");
             return;
         }
 
@@ -430,7 +431,7 @@ public class VrMarker : MonoBehaviour
      */
     public void ChangeToPen()
     {
-        Debug.Log("called");
+        //Debug.Log("called");
         ChangeTool(Tool.Pen);
     }
 
@@ -459,7 +460,7 @@ public class VrMarker : MonoBehaviour
     public void ChangeWhiteboardStackCap(int n)
     {
         _wbStateStack.ChangeCap(n);
-        Debug.Log("Stack changed to " + n);
+        //.Log("Stack changed to " + n);
     }
 
     private class WhiteboardState

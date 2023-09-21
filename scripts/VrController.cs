@@ -10,19 +10,22 @@ using System.Threading;
 
 public class VrController : MonoBehaviour
 {
+    [Header("VR")]
     public XRController rightHand;
     public XRController leftHand;
     public XRRayInteractor rightRay;
     public XRRayInteractor leftRay;
     public InputHelpers.Button activation;
+    public ContinuousMoveProviderBase moveProvider;
 
+    [Header("Menu Objects")]
     public GameObject handMenu;
     public GameObject rgbSlider;
     public GameObject wholeMenu;
 
     public TextMeshProUGUI handText, speedText, rayText;
-    public ContinuousMoveProviderBase moveProvider;
 
+    [Header("Options")]
     public bool leftHanded;
 
     public float rayLength = 10, movementSpeed = 5;
